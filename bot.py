@@ -122,7 +122,7 @@ async def answer_handler(pm: Message, state: FSMContext):
     )
 
     await pm.bot.edit_message_text(
-        chat_id=pm.chat.id, message_id=question_message_id, text=f"{q_num + 1}: {q} = ?"
+        chat_id=pm.chat.id, message_id=question_message_id, text=f"{q} = ?"
     )
 
 
