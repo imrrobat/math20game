@@ -1,14 +1,19 @@
 import asyncio
 import random
 import time
+import os
 
-from aiogram import Bot, Dispatcher, F
+from aiogram import Bot, Dispatcher
 from aiogram.types import Message
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from menu import START_MENU
-from config import API
+from dotenv import load_dotenv
+
+
+load_dotenv()
+API = os.getenv("API")
 
 
 TOTAL_QUESTIONS = 20
@@ -75,13 +80,11 @@ async def answer_handler(pm: Message, state: FSMContext):
     correct_answer = data["current_answer"]
     question_message_id = data["question_message_id"]
 
-    # پاک کردن پیام کاربر برای تمیز موندن چت
     try:
         await pm.delete()
     except:
         pass
 
-    # بررسی جواب
     try:
         user_answer = int(pm.text)
     except ValueError:
@@ -114,7 +117,6 @@ async def answer_handler(pm: Message, state: FSMContext):
         await state.clear()
         return
 
-    # سوال بعدی
     q, ans = generate_question()
 
     await state.update_data(
