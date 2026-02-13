@@ -125,18 +125,20 @@ async def mode_handler(pm: Message, state: FSMContext):
 async def answer_handler(pm: Message, state: FSMContext):
     data = await state.get_data()
 
-    mode = data["mode"]
-    q_num = data["question_number"]
-    correct = data["correct"]
-    wrong = data["wrong"]
-    correct_answer = data["current_answer"]
-    question_message_id = data["question_message_id"]
+    mode = data.get("mode")
+    q_num = data.get("question_number", 1)
+    correct = data.get("correct", 0)
+    wrong = data.get("wrong", 0)
+    correct_answer = data.get("current_answer")
+    question_message_id = data.get("question_message_id")
 
+    # حذف پیام کاربر (اختیاری، برای تمیز بودن چت)
     try:
         await pm.delete()
     except:
         pass
 
+    # بررسی جواب کاربر
     try:
         user_answer = int(pm.text)
     except ValueError:
@@ -149,37 +151,57 @@ async def answer_handler(pm: Message, state: FSMContext):
 
     # اگر بازی تموم شده
     if q_num >= TOTAL_QUESTIONS:
-        total_time = round(time.time() - data["start_time"], 2)
+        total_time = round(time.time() - data.get("start_time", time.time()), 2)
         score = (correct * 100) - (wrong * 150) - int(total_time * 2)
         score = max(0, score)
 
-        await pm.bot.edit_message_text(
-            chat_id=pm.chat.id,
-            message_id=question_message_id,
-            text=(
+        # سعی در ادیت پیام سوال
+        try:
+            await pm.bot.edit_message_text(
+                chat_id=pm.chat.id,
+                message_id=question_message_id,
+                text=(
+                    "🎯 نتیجه نهایی\n"
+                    f"تعداد درست‌ها: {correct}\n"
+                    f"تعداد غلط‌ها: {wrong}\n"
+                    f"زمان: {total_time} ثانیه\n"
+                    "-------------------\n"
+                    f"امتیاز شما: {score}"
+                ),
+            )
+        except:
+            # اگر قابل ادیت نبود، پیام جدید بفرست
+            await pm.answer(
                 "🎯 نتیجه نهایی\n"
-                f"تعداد درست ها: {correct}\n"
-                f"تعداد غلط ها: {wrong}\n"
+                f"تعداد درست‌ها: {correct}\n"
+                f"تعداد غلط‌ها: {wrong}\n"
                 f"زمان: {total_time} ثانیه\n"
                 "-------------------\n"
                 f"امتیاز شما: {score}"
-            ),
-        )
+            )
 
         await state.clear()
         return
 
+    # سوال بعدی
     q, ans = generate_question(mode)
 
+    # بروزرسانی state
     await state.update_data(
         question_number=q_num + 1, correct=correct, wrong=wrong, current_answer=ans
     )
 
-    await pm.bot.edit_message_text(
-        chat_id=pm.chat.id,
-        message_id=question_message_id,
-        text=f"{q_num + 1}:\n\n {q} = ?",
-    )
+    # سعی در ادیت پیام سوال قبلی
+    try:
+        await pm.bot.edit_message_text(
+            chat_id=pm.chat.id,
+            message_id=question_message_id,
+            text=f"{q_num + 1}:\n\n{q} = ?",
+        )
+    except:
+        # اگر پیام قابل ادیت نبود، پیام جدید بفرست و id جدید ذخیره کن
+        new_msg = await pm.answer(f"{q_num + 1}:\n\n{q} = ?")
+        await state.update_data(question_message_id=new_msg.message_id)
 
 
 async def main():
