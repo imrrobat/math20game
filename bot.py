@@ -70,7 +70,6 @@ async def newgame_handler(pm: Message, state: FSMContext):
 
 async def mode_handler(pm: Message, state: FSMContext):
     text = pm.text
-
     mode_map = {
         "➕ جمع": "+",
         "➖ تفریق": "-",
@@ -84,11 +83,12 @@ async def mode_handler(pm: Message, state: FSMContext):
 
     mode = mode_map[text]
 
-    q, ans = generate_question(mode)
+    # پیام شروع بازی جدا
+    start_msg = await pm.answer("بازی شروع شد 🧠")
 
-    msg = await pm.answer(
-        f"بازی شروع شد 🧠\n\n{q} = ?", reply_markup=ReplyKeyboardRemove()
-    )
+    # پیام سوال اول
+    q, ans = generate_question(mode)
+    question_msg = await pm.answer(f"{q} = ?", reply_markup=ReplyKeyboardRemove())
 
     await state.update_data(
         mode=mode,
@@ -97,29 +97,11 @@ async def mode_handler(pm: Message, state: FSMContext):
         wrong=0,
         start_time=time.time(),
         current_answer=ans,
-        question_message_id=msg.message_id,
+        start_message_id=start_msg.message_id,  # پیام شروع بازی
+        question_message_id=question_msg.message_id,  # پیام سوال
     )
 
     await state.set_state(GameState.playing)
-
-
-# async def newgame_handler(pm: Message, state: FSMContext):
-#     await state.clear()
-
-#     q, ans = generate_question()
-
-#     msg = await pm.answer(f"بازی شروع شد 🧠\n\n{q} = ?")
-
-#     await state.update_data(
-#         question_number=1,
-#         correct=0,
-#         wrong=0,
-#         start_time=time.time(),
-#         current_answer=ans,
-#         question_message_id=msg.message_id,
-#     )
-
-#     await state.set_state(GameState.playing)
 
 
 async def answer_handler(pm: Message, state: FSMContext):
@@ -131,8 +113,9 @@ async def answer_handler(pm: Message, state: FSMContext):
     wrong = data.get("wrong", 0)
     correct_answer = data.get("current_answer")
     question_message_id = data.get("question_message_id")
+    start_message_id = data.get("start_message_id")
 
-    # حذف پیام کاربر (اختیاری، برای تمیز بودن چت)
+    # حذف پیام کاربر برای تمیز بودن چت
     try:
         await pm.delete()
     except:
@@ -155,30 +138,27 @@ async def answer_handler(pm: Message, state: FSMContext):
         score = (correct * 100) - (wrong * 150) - int(total_time * 2)
         score = max(0, score)
 
-        # سعی در ادیت پیام سوال
+        # حذف پیام سوال آخر
         try:
-            await pm.bot.edit_message_text(
-                chat_id=pm.chat.id,
-                message_id=question_message_id,
-                text=(
-                    "🎯 نتیجه نهایی\n"
-                    f"تعداد درست‌ها: {correct}\n"
-                    f"تعداد غلط‌ها: {wrong}\n"
-                    f"زمان: {total_time} ثانیه\n"
-                    "-------------------\n"
-                    f"امتیاز شما: {score}"
-                ),
-            )
+            await pm.bot.delete_message(pm.chat.id, question_message_id)
         except:
-            # اگر قابل ادیت نبود، پیام جدید بفرست
-            await pm.answer(
-                "🎯 نتیجه نهایی\n"
-                f"تعداد درست‌ها: {correct}\n"
-                f"تعداد غلط‌ها: {wrong}\n"
-                f"زمان: {total_time} ثانیه\n"
-                "-------------------\n"
-                f"امتیاز شما: {score}"
-            )
+            pass
+
+        # حذف پیام شروع بازی
+        try:
+            await pm.bot.delete_message(pm.chat.id, start_message_id)
+        except:
+            pass
+
+        # پیام نتیجه نهایی
+        await pm.answer(
+            "🎯 نتیجه نهایی\n"
+            f"تعداد درست‌ها: {correct}\n"
+            f"تعداد غلط‌ها: {wrong}\n"
+            f"زمان: {total_time} ثانیه\n"
+            "-------------------\n"
+            f"امتیاز شما: {score}"
+        )
 
         await state.clear()
         return
