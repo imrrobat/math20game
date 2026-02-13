@@ -8,26 +8,35 @@ from aiogram.types import Message
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from menu import START_MENU
+from utils import START_MENU
 from dotenv import load_dotenv
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 
 load_dotenv()
 API = os.getenv("API")
 
-
 TOTAL_QUESTIONS = 20
+
+mode_keyboard = ReplyKeyboardMarkup(
+    keyboard=[
+        [KeyboardButton(text="➕ جمع"), KeyboardButton(text="➖ تفریق")],
+        [KeyboardButton(text="✖️ ضرب"), KeyboardButton(text="➗ تقسیم")],
+    ],
+    resize_keyboard=True,
+)
 
 
 class GameState(StatesGroup):
+    choosing_mode = State()
     playing = State()
 
 
-def generate_question():
+def generate_question(mode="+"):
     n1 = random.randint(0, 9)
     n2 = random.randint(1, 9)
 
-    op = random.choice("+-*/")
+    op = mode
 
     if op == "+":
         answer = n1 + n2
@@ -55,11 +64,34 @@ async def start_handler(pm: Message):
 async def newgame_handler(pm: Message, state: FSMContext):
     await state.clear()
 
-    q, ans = generate_question()
+    await pm.answer("حالت بازی رو انتخاب کن 👇", reply_markup=mode_keyboard)
+    await state.set_state(GameState.choosing_mode)
 
-    msg = await pm.answer(f"بازی شروع شد 🧠\n\n{q} = ?")
+
+async def mode_handler(pm: Message, state: FSMContext):
+    text = pm.text
+
+    mode_map = {
+        "➕ جمع": "+",
+        "➖ تفریق": "-",
+        "✖️ ضرب": "*",
+        "➗ تقسیم": "/",
+    }
+
+    if text not in mode_map:
+        await pm.answer("لطفا یکی از گزینه‌ها رو انتخاب کن 👇")
+        return
+
+    mode = mode_map[text]
+
+    q, ans = generate_question(mode)
+
+    msg = await pm.answer(
+        f"بازی شروع شد 🧠\n\n{q} = ?", reply_markup=ReplyKeyboardRemove()
+    )
 
     await state.update_data(
+        mode=mode,
         question_number=1,
         correct=0,
         wrong=0,
@@ -71,9 +103,29 @@ async def newgame_handler(pm: Message, state: FSMContext):
     await state.set_state(GameState.playing)
 
 
+# async def newgame_handler(pm: Message, state: FSMContext):
+#     await state.clear()
+
+#     q, ans = generate_question()
+
+#     msg = await pm.answer(f"بازی شروع شد 🧠\n\n{q} = ?")
+
+#     await state.update_data(
+#         question_number=1,
+#         correct=0,
+#         wrong=0,
+#         start_time=time.time(),
+#         current_answer=ans,
+#         question_message_id=msg.message_id,
+#     )
+
+#     await state.set_state(GameState.playing)
+
+
 async def answer_handler(pm: Message, state: FSMContext):
     data = await state.get_data()
 
+    mode = data["mode"]
     q_num = data["question_number"]
     correct = data["correct"]
     wrong = data["wrong"]
@@ -117,14 +169,16 @@ async def answer_handler(pm: Message, state: FSMContext):
         await state.clear()
         return
 
-    q, ans = generate_question()
+    q, ans = generate_question(mode)
 
     await state.update_data(
         question_number=q_num + 1, correct=correct, wrong=wrong, current_answer=ans
     )
 
     await pm.bot.edit_message_text(
-        chat_id=pm.chat.id, message_id=question_message_id, text=f"{q} = ?"
+        chat_id=pm.chat.id,
+        message_id=question_message_id,
+        text=f"{q_num + 1}:\n\n {q} = ?",
     )
 
 
@@ -134,6 +188,7 @@ async def main():
 
     dp.message.register(start_handler, CommandStart())
     dp.message.register(newgame_handler, Command("newgame"))
+    dp.message.register(mode_handler, GameState.choosing_mode)
     dp.message.register(answer_handler, GameState.playing)
 
     await dp.start_polling(bot)
