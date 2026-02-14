@@ -128,6 +128,12 @@ async def nickname_handler(pm: Message, state: FSMContext):
 
 
 async def newgame_handler(pm: Message, state: FSMContext):
+    user = get_user(pm.from_user.id)
+
+    if not user:
+        await pm.answer("اول با /start پروفایل بساز 👤")
+        return
+
     await state.clear()
 
     await pm.answer("حالت بازی رو انتخاب کن 👇", reply_markup=mode_keyboard)
@@ -135,12 +141,6 @@ async def newgame_handler(pm: Message, state: FSMContext):
 
 
 async def mode_handler(pm: Message, state: FSMContext):
-    user = get_user(pm.from_user.id)
-
-    if not user:
-        await pm.answer("اول با /start پروفایل بساز 👤")
-        return
-
     text = pm.text
 
     mode_map = {
