@@ -33,23 +33,29 @@ class GameState(StatesGroup):
     playing = State()
 
 
-def mixin_generate():
+def mixin_generate(mode="+"):
     n1 = random.randint(0, 9)
     n2 = random.randint(1, 9)
-    op = random.choice("+-*/")
+
+    op = mode  # علامت واقعی برای محاسبه
+
     if op == "+":
         answer = n1 + n2
+        display_op = "+"
     elif op == "-":
         if n1 < n2:
             n1, n2 = n2, n1
-            answer = n1 - n2
+        answer = n1 - n2
+        display_op = "-"
     elif op == "*":
         answer = n1 * n2
-    else:
-        answer = random.randint(0, 9)
-        n2 = random.randint(1, 9)
-        n1 = answer * n2
-    return f"{n1} {op} {n2}", answer
+        display_op = "x"  # علامت نمایشی
+    else:  # /
+        answer = n1 * n2  # تضمین تقسیم صحیح
+        n1 = answer
+        display_op = "÷"
+
+    return f"{n1} {display_op} {n2}", answer
 
 
 def generate_question(mode="+"):
