@@ -169,19 +169,14 @@ async def answer_handler(pm: Message, state: FSMContext):
         score = (correct * 100) - (wrong * 150) - int(total_time * 2)
         score = max(0, score)
 
-        # حذف پیام سوال آخر
-        try:
-            await pm.bot.delete_message(pm.chat.id, question_message_id)
-        except:
-            pass
+        # حذف پیام سوال آخر و پیام شروع بازی
+        for msg_id in [question_message_id, start_message_id]:
+            try:
+                await pm.bot.delete_message(pm.chat.id, msg_id)
+            except:
+                pass
 
-        # حذف پیام شروع بازی
-        try:
-            await pm.bot.delete_message(pm.chat.id, start_message_id)
-        except:
-            pass
-
-        # پیام نتیجه نهایی
+        # نمایش نتیجه نهایی
         await pm.answer(
             "🎯 نتیجه نهایی\n"
             f"تعداد درست‌ها: {correct}\n"
@@ -194,8 +189,11 @@ async def answer_handler(pm: Message, state: FSMContext):
         await state.clear()
         return
 
-    # سوال بعدی
-    q, ans = generate_question(mode)
+    # تولید سوال بعدی بر اساس مود
+    if mode == "mixin":
+        q, ans = mixin_generate()
+    else:
+        q, ans = generate_question(mode)
 
     # بروزرسانی state
     await state.update_data(
@@ -207,11 +205,11 @@ async def answer_handler(pm: Message, state: FSMContext):
         await pm.bot.edit_message_text(
             chat_id=pm.chat.id,
             message_id=question_message_id,
-            text=f"{q_num + 1}:\n\n{q} = ?",
+            text=f"{q_num + 1}: {q} = ?",
         )
     except:
-        # اگر پیام قابل ادیت نبود، پیام جدید بفرست و id جدید ذخیره کن
-        new_msg = await pm.answer(f"{q_num + 1}:\n\n{q} = ?")
+        # اگر قابل ادیت نبود، پیام جدید بفرست و id جدید ذخیره کن
+        new_msg = await pm.answer(f"{q_num + 1}: {q} = ?")
         await state.update_data(question_message_id=new_msg.message_id)
 
 
