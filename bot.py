@@ -113,15 +113,17 @@ async def start_handler(pm: Message, state: FSMContext):
     await pm.answer("اسمت چیه؟ این اسم توی رتبه‌بندی نمایش داده میشه 👤")
     await state.set_state(GameState.waiting_for_nickname)
 
+
 async def help_handler(pm: Message):
     await pm.answer(HELP_MENU, reply_markup=main_menu)
+
 
 async def nickname_handler(pm: Message, state: FSMContext):
     nickname = pm.text.strip()
 
     add_user(pm.from_user.id, nickname)
 
-    await pm.answer("پروفایلت ساخته شد ✅", , reply_markup=main_menu)
+    await pm.answer("پروفایلت ساخته شد ✅", reply_markup=main_menu)
     await state.set_state(GameState.choosing_mode)
 
 
@@ -294,7 +296,6 @@ async def leaderboard_handler(pm: Message):
     await pm.answer("\n".join(text_parts))
 
 
-
 async def log_handler(pm: Message):
     # بررسی اینکه فقط ادمین بتونه اجرا کنه
     if pm.from_user.id != ADMIN_ID:
@@ -319,6 +320,7 @@ async def log_handler(pm: Message):
         f"تعداد کل کاربران: {total_users}\n"
         f"تعداد کل بازی‌های انجام شده: {total_games}"
     )
+
 
 async def main():
     bot = Bot(API)
