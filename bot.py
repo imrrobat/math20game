@@ -135,6 +135,12 @@ async def newgame_handler(pm: Message, state: FSMContext):
 
 
 async def mode_handler(pm: Message, state: FSMContext):
+    user = get_user(pm.from_user.id)
+
+    if not user:
+        await pm.answer("اول با /start پروفایل بساز 👤")
+        return
+
     text = pm.text
 
     mode_map = {

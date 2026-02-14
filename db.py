@@ -16,11 +16,11 @@ def init_db():
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY,
             nickname TEXT NOT NULL,
-            plus_score INTEGER DEFAULT 0,
-            minus_score INTEGER DEFAULT 0,
-            multiply_score INTEGER DEFAULT 0,
-            divide_score INTEGER DEFAULT 0,
-            mix_score INTEGER DEFAULT 0,
+            score_add INTEGER DEFAULT 0,
+            score_sub INTEGER DEFAULT 0,
+            score_mul INTEGER DEFAULT 0,
+            score_div INTEGER DEFAULT 0,
+            score_mix INTEGER DEFAULT 0
             games_played INTEGER DEFAULT 0
         )
         """
