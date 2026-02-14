@@ -20,7 +20,7 @@ def init_db():
             score_sub INTEGER DEFAULT 0,
             score_mul INTEGER DEFAULT 0,
             score_div INTEGER DEFAULT 0,
-            score_mix INTEGER DEFAULT 0
+            score_mix INTEGER DEFAULT 0,
             games_played INTEGER DEFAULT 0
         )
         """
