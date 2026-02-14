@@ -232,7 +232,8 @@ async def answer_handler(pm: Message, state: FSMContext):
             f"تعداد غلط‌ها: {wrong}\n"
             f"زمان: {total_time} ثانیه\n"
             "-------------------\n"
-            f"امتیاز شما: {score}"
+            f"امتیاز شما: {score}",
+            reply_markup=main_menu,
         )
 
         await state.clear()
@@ -278,7 +279,7 @@ async def profile_handler(pm: Message):
         f"🎲 میکس: {mix}"
     )
 
-    await pm.answer(text)
+    await pm.answer(text, reply_markup=main_menu)
 
 
 async def leaderboard_handler(pm: Message):
