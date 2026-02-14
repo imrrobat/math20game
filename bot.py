@@ -8,15 +8,34 @@ from aiogram.types import Message
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
-from utils import START_MENU
+from utils import HELP_MENU, main_menu
 from dotenv import load_dotenv
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from db import (
+    init_db,
+    get_conn,
+    add_user,
+    user_exists,
+    get_user,
+    update_best_score,
+    get_top_players,
+    add_game_played,
+)
+import sqlite3
 
-
+init_db()
 load_dotenv()
 API = os.getenv("API")
+ADMIN_ID = os.getenv("ADMIN_ID")
 
 TOTAL_QUESTIONS = 20
+leaderboard_modes = {
+    "جمع": "score_plus",
+    "تفریق": "score_minus",
+    "ضرب": "score_mul",
+    "تقسیم": "score_div",
+    "میکس": "score_mixin",
+}
 
 mode_keyboard = ReplyKeyboardMarkup(
     keyboard=[
@@ -29,6 +48,7 @@ mode_keyboard = ReplyKeyboardMarkup(
 
 
 class GameState(StatesGroup):
+    waiting_for_nickname = State()
     choosing_mode = State()
     playing = State()
 
@@ -49,12 +69,12 @@ def mixin_generate():
         display_op = "-"
     elif op == "*":
         answer = n1 * n2
-        display_op = "x"  # علامت نمایشی
-    else:  # /
+        display_op = "x"
+    else:
         answer = random.randint(1, 9)
         n2 = random.randint(1, 9)
         n1 = answer * n2
-        display_op = "÷"  # برای نمایش تقسیم
+        display_op = "÷"
 
     return f"{n1} {display_op} {n2}", answer
 
@@ -65,7 +85,6 @@ def generate_question(mode="+"):
 
     op = mode
 
-    # محاسبه جواب واقعی
     if op == "+":
         answer = n1 + n2
         display_op = "+"
@@ -76,19 +95,34 @@ def generate_question(mode="+"):
         display_op = "-"
     elif op == "*":
         answer = n1 * n2
-        display_op = "x"  # برای نمایش ضرب
+        display_op = "x"
     elif op == "/":
-        # تقسیم درست: جواب عدد صحیح
         answer = random.randint(1, 9)
         n2 = random.randint(1, 9)
         n1 = answer * n2
-        display_op = "÷"  # برای نمایش تقسیم
+        display_op = "÷"
 
     return f"{n1} {display_op} {n2}", answer
 
 
-async def start_handler(pm: Message):
-    await pm.answer(START_MENU)
+async def start_handler(pm: Message, state: FSMContext):
+    if user_exists(pm.from_user.id):
+        await pm.answer("خوش برگشتی 👋", reply_markup=main_menu)
+        return
+
+    await pm.answer("اسمت چیه؟ این اسم توی رتبه‌بندی نمایش داده میشه 👤")
+    await state.set_state(GameState.waiting_for_nickname)
+
+async def help_handler(pm: Message):
+    await pm.answer(HELP_MENU, reply_markup=main_menu)
+
+async def nickname_handler(pm: Message, state: FSMContext):
+    nickname = pm.text.strip()
+
+    add_user(pm.from_user.id, nickname)
+
+    await pm.answer("پروفایلت ساخته شد ✅", , reply_markup=main_menu)
+    await state.set_state(GameState.choosing_mode)
 
 
 async def newgame_handler(pm: Message, state: FSMContext):
@@ -117,10 +151,8 @@ async def mode_handler(pm: Message, state: FSMContext):
 
     mode = mode_map[text]
 
-    # پیام شروع بازی جدا
     start_msg = await pm.answer("بازی شروع شد 🧠", reply_markup=ReplyKeyboardRemove())
 
-    # تولید سوال اول
     if mode == "mixin":
         q, ans = mixin_generate()
     else:
@@ -128,7 +160,6 @@ async def mode_handler(pm: Message, state: FSMContext):
 
     question_msg = await pm.answer(f"1: {q} = ?")
 
-    # ذخیره اطلاعات در state
     await state.update_data(
         mode=mode,
         question_number=1,
@@ -153,13 +184,11 @@ async def answer_handler(pm: Message, state: FSMContext):
     question_message_id = data.get("question_message_id")
     start_message_id = data.get("start_message_id")
 
-    # حذف پیام کاربر برای تمیز بودن چت
     try:
         await pm.delete()
     except:
         pass
 
-    # بررسی جواب کاربر
     try:
         user_answer = int(pm.text)
     except ValueError:
@@ -170,22 +199,28 @@ async def answer_handler(pm: Message, state: FSMContext):
         else:
             wrong += 1
 
-    # اگر بازی تموم شده
     if q_num >= TOTAL_QUESTIONS:
         total_time = round(time.time() - data.get("start_time", time.time()), 2)
         score = (correct * 100) - (wrong * 150) - int(total_time * 2)
-        score = max(0, score)
+        # score = max(0, score)
 
-        # حذف پیام سوال آخر و پیام شروع بازی
+        update_best_score(pm.from_user.id, mode, score)
+        add_game_played(pm.from_user.id)
         for msg_id in [question_message_id, start_message_id]:
             try:
                 await pm.bot.delete_message(pm.chat.id, msg_id)
             except:
                 pass
-
-        # نمایش نتیجه نهایی
+        mode_title_map = {
+            "+": "جمع",
+            "-": "تفریق",
+            "*": "ضرب",
+            "/": "تقسیم",
+            "mixin": "میکس",
+        }
+        mode_title = mode_title_map.get(mode, "نامشخص")
         await pm.answer(
-            "🎯 نتیجه نهایی\n"
+            f"🎯 نتیجه نهایی در {mode_title}\n"
             f"تعداد درست‌ها: {correct}\n"
             f"تعداد غلط‌ها: {wrong}\n"
             f"زمان: {total_time} ثانیه\n"
@@ -196,18 +231,15 @@ async def answer_handler(pm: Message, state: FSMContext):
         await state.clear()
         return
 
-    # تولید سوال بعدی بر اساس مود
     if mode == "mixin":
         q, ans = mixin_generate()
     else:
         q, ans = generate_question(mode)
 
-    # بروزرسانی state
     await state.update_data(
         question_number=q_num + 1, correct=correct, wrong=wrong, current_answer=ans
     )
 
-    # سعی در ادیت پیام سوال قبلی
     try:
         await pm.bot.edit_message_text(
             chat_id=pm.chat.id,
@@ -215,10 +247,78 @@ async def answer_handler(pm: Message, state: FSMContext):
             text=f"{q_num + 1}: {q} = ?",
         )
     except:
-        # اگر قابل ادیت نبود، پیام جدید بفرست و id جدید ذخیره کن
         new_msg = await pm.answer(f"{q_num + 1}: {q} = ?")
         await state.update_data(question_message_id=new_msg.message_id)
 
+
+async def profile_handler(pm: Message):
+    user = get_user(pm.from_user.id)
+
+    if not user:
+        await pm.answer("اول با /start پروفایل بساز 👤")
+        return
+
+    nickname, add, sub, mul, div, mix = user
+
+    text = (
+        "👤 پروفایل شما\n\n"
+        f"نام مستعار: {nickname}\n\n"
+        "🏆 امتیازها\n"
+        f"➕ جمع: {add}\n"
+        f"➖ تفریق: {sub}\n"
+        f"✖️ ضرب: {mul}\n"
+        f"➗ تقسیم: {div}\n"
+        f"🎲 میکس: {mix}"
+    )
+
+    await pm.answer(text)
+
+
+async def leaderboard_handler(pm: Message):
+    text_parts = []
+
+    for title, column in leaderboard_modes.items():
+        top_players = get_top_players(column)
+
+        text_parts.append(f"🏆 بهترین امتیازات در حالت {title}:")
+
+        if not top_players:
+            text_parts.append("فعلا امتیازی ثبت نشده\n")
+            continue
+
+        for i, (nickname, score) in enumerate(top_players, start=1):
+            text_parts.append(f"{i}. {nickname} — {score}")
+
+        text_parts.append("")  # خط خالی بین مودها
+
+    await pm.answer("\n".join(text_parts))
+
+
+
+async def log_handler(pm: Message):
+    # بررسی اینکه فقط ادمین بتونه اجرا کنه
+    if pm.from_user.id != ADMIN_ID:
+        await pm.answer("❌ شما اجازه دسترسی به این بخش را ندارید.")
+        return
+
+    conn = get_conn()  # استفاده از تابع get_conn از db.py
+    c = conn.cursor()
+
+    # تعداد کاربران
+    c.execute("SELECT COUNT(*) FROM users")
+    total_users = c.fetchone()[0]
+
+    # تعداد کل بازی‌ها
+    c.execute("SELECT SUM(games_played) FROM users")
+    total_games = c.fetchone()[0] or 0
+
+    conn.close()
+
+    await pm.answer(
+        f"📊 آمار سرور:\n"
+        f"تعداد کل کاربران: {total_users}\n"
+        f"تعداد کل بازی‌های انجام شده: {total_games}"
+    )
 
 async def main():
     bot = Bot(API)
@@ -226,6 +326,13 @@ async def main():
 
     dp.message.register(start_handler, CommandStart())
     dp.message.register(newgame_handler, Command("newgame"))
+    dp.message.register(profile_handler, Command("profile"))
+    dp.message.register(leaderboard_handler, Command("leaderboard"))
+    dp.message.register(help_handler, Command("help"))
+    dp.message.register(log_handler, Command("log"))
+
+    # سپس state-based handlers
+    dp.message.register(nickname_handler, GameState.waiting_for_nickname)
     dp.message.register(mode_handler, GameState.choosing_mode)
     dp.message.register(answer_handler, GameState.playing)
 
