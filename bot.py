@@ -38,23 +38,26 @@ def generate_question(mode="+"):
 
     op = mode
 
+    # محاسبه جواب واقعی
     if op == "+":
         answer = n1 + n2
-
+        display_op = "+"
     elif op == "-":
         if n1 < n2:
             n1, n2 = n2, n1
         answer = n1 - n2
-
+        display_op = "-"
     elif op == "*":
         answer = n1 * n2
-
-    else:
-        answer = random.randint(0, 9)
+        display_op = "x"  # برای نمایش ضرب
+    elif op == "/":
+        # تقسیم درست: جواب عدد صحیح
+        answer = random.randint(1, 9)
         n2 = random.randint(1, 9)
         n1 = answer * n2
+        display_op = "÷"  # برای نمایش تقسیم
 
-    return f"{n1} {op} {n2}", answer
+    return f"{n1} {display_op} {n2}", answer
 
 
 async def start_handler(pm: Message):
@@ -163,11 +166,6 @@ async def answer_handler(pm: Message, state: FSMContext):
         await state.clear()
         return
 
-    # حذف پیام شروع بازی
-    try:
-        await pm.bot.delete_message(pm.chat.id, start_message_id)
-    except:
-        pass
     # سوال بعدی
     q, ans = generate_question(mode)
 
