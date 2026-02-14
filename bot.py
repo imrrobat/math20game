@@ -22,6 +22,7 @@ mode_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [KeyboardButton(text="➕ جمع"), KeyboardButton(text="➖ تفریق")],
         [KeyboardButton(text="✖️ ضرب"), KeyboardButton(text="➗ تقسیم")],
+        [KeyboardButton(text="⚡ میکس")],  # حالت میکس اضافه شد
     ],
     resize_keyboard=True,
 )
@@ -30,6 +31,25 @@ mode_keyboard = ReplyKeyboardMarkup(
 class GameState(StatesGroup):
     choosing_mode = State()
     playing = State()
+
+
+def mixin_generate():
+    n1 = random.randint(0, 9)
+    n2 = random.randint(1, 9)
+    op = random.choice("+-*/")
+    if op == "+":
+        answer = n1 + n2
+    elif op == "-":
+        if n1 < n2:
+            n1, n2 = n2, n1
+            answer = n1 - n2
+    elif op == "*":
+        answer = n1 * n2
+    else:
+        answer = random.randint(0, 9)
+        n2 = random.randint(1, 9)
+        n1 = answer * n2
+    return f"{n1} {op} {n2}", answer
 
 
 def generate_question(mode="+"):
@@ -73,26 +93,35 @@ async def newgame_handler(pm: Message, state: FSMContext):
 
 async def mode_handler(pm: Message, state: FSMContext):
     text = pm.text
+
     mode_map = {
         "➕ جمع": "+",
         "➖ تفریق": "-",
         "✖️ ضرب": "*",
         "➗ تقسیم": "/",
+        "⚡ میکس": "mixin",
     }
 
     if text not in mode_map:
-        await pm.answer("لطفا یکی از گزینه‌ها رو انتخاب کن 👇")
+        await pm.answer(
+            "لطفا یکی از گزینه‌ها رو انتخاب کن 👇", reply_markup=mode_keyboard
+        )
         return
 
     mode = mode_map[text]
 
     # پیام شروع بازی جدا
-    start_msg = await pm.answer("بازی شروع شد 🧠")
+    start_msg = await pm.answer("بازی شروع شد 🧠", reply_markup=ReplyKeyboardRemove())
 
-    # پیام سوال اول
-    q, ans = generate_question(mode)
-    question_msg = await pm.answer(f"{q} = ?", reply_markup=ReplyKeyboardRemove())
+    # تولید سوال اول
+    if mode == "mixin":
+        q, ans = mixin_generate()
+    else:
+        q, ans = generate_question(mode)
 
+    question_msg = await pm.answer(f"1: {q} = ?")
+
+    # ذخیره اطلاعات در state
     await state.update_data(
         mode=mode,
         question_number=1,
@@ -100,8 +129,7 @@ async def mode_handler(pm: Message, state: FSMContext):
         wrong=0,
         start_time=time.time(),
         current_answer=ans,
-        start_message_id=start_msg.message_id,  # پیام شروع بازی
-        question_message_id=question_msg.message_id,  # پیام سوال
+        question_message_id=question_msg.message_id,
     )
 
     await state.set_state(GameState.playing)
