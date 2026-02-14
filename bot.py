@@ -30,11 +30,11 @@ ADMIN_ID = os.getenv("ADMIN_ID")
 
 TOTAL_QUESTIONS = 20
 leaderboard_modes = {
-    "جمع": "score_plus",
-    "تفریق": "score_minus",
+    "جمع": "score_add",
+    "تفریق": "score_sub",
     "ضرب": "score_mul",
     "تقسیم": "score_div",
-    "میکس": "score_mixin",
+    "میکس": "score_mix",
 }
 
 mode_keyboard = ReplyKeyboardMarkup(
