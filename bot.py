@@ -49,7 +49,7 @@ def mixin_generate():
         display_op = "-"
     elif op == "*":
         answer = n1 * n2
-        display_op = "˟"  # علامت نمایشی
+        display_op = "x"  # علامت نمایشی
     else:  # /
         answer = n1 * n2  # تضمین تقسیم صحیح
         n1 = answer
