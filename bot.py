@@ -51,9 +51,10 @@ def mixin_generate():
         answer = n1 * n2
         display_op = "x"  # علامت نمایشی
     else:  # /
-        answer = n1 * n2  # تضمین تقسیم صحیح
-        n1 = answer
-        display_op = "÷"
+        answer = random.randint(1, 9)
+        n2 = random.randint(1, 9)
+        n1 = answer * n2
+        display_op = "÷"  # برای نمایش تقسیم
 
     return f"{n1} {display_op} {n2}", answer
 
