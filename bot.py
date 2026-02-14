@@ -3,7 +3,7 @@ import random
 import time
 import os
 
-from aiogram import Bot, Dispatcher
+from aiogram import Bot, Dispatcher, F
 from aiogram.types import Message
 from aiogram.filters import Command, CommandStart
 from aiogram.fsm.state import State, StatesGroup
@@ -339,6 +339,9 @@ async def main():
     dp.message.register(help_handler, Command("help"))
     dp.message.register(log_handler, Command("log"))
 
+    dp.message.register(newgame_handler, F.text == "🎮 شروع بازی")
+    dp.message.register(profile_handler, F.text == "👤 پروفایل من")
+    dp.message.register(leaderboard_handler, F.text == "🏆 برترین ها")
     # سپس state-based handlers
     dp.message.register(nickname_handler, GameState.waiting_for_nickname)
     dp.message.register(mode_handler, GameState.choosing_mode)
