@@ -21,12 +21,11 @@ from db import (
     get_top_players,
     add_game_played,
 )
-import sqlite3
 
 init_db()
 load_dotenv()
 API = os.getenv("API")
-ADMIN_ID = os.getenv("ADMIN_ID")
+ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
 TOTAL_QUESTIONS = 20
 leaderboard_modes = {
