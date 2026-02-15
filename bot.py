@@ -208,7 +208,7 @@ async def answer_handler(pm: Message, state: FSMContext):
 
     if q_num >= TOTAL_QUESTIONS:
         total_time = round(time.time() - data.get("start_time", time.time()), 2)
-        score = (correct * 100) - (wrong * 150) - int(total_time * 2)
+        score = (correct * 100) - (wrong * 200) - int(total_time * 2)
         # score = max(0, score)
 
         update_best_score(pm.from_user.id, mode, score)
@@ -295,7 +295,8 @@ async def leaderboard_handler(pm: Message):
             continue
 
         for i, (nickname, score) in enumerate(top_players, start=1):
-            text_parts.append(f"{i}. {nickname} — {score}")
+            map_i = {1: "اول", 2: "دوم", 3: "سوم", 4: "چهارم", 5: "پنجم"}
+            text_parts.append(f"{map_i.get(i)}. {nickname} — {score}")
 
         text_parts.append("")  # خط خالی بین مودها
 
