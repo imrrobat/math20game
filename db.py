@@ -159,7 +159,7 @@ def get_all_users():
     conn = get_conn()
     c = conn.cursor()
 
-    c.execute("SELECT telegram_id FROM users")
+    c.execute("SELECT user_id FROM users")
     rows = c.fetchall()
 
     conn.close()
@@ -180,8 +180,7 @@ def reset_all_scores():
             score_sub = 0,
             score_mul = 0,
             score_div = 0,
-            score_mix = 0,
-            games_played = 0
+            score_mix = 0
     """
     )
 
