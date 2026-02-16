@@ -20,6 +20,8 @@ from db import (
     update_best_score,
     get_top_players,
     add_game_played,
+    get_all_users,
+    reset_all_scores,
 )
 
 init_db()
@@ -53,8 +55,8 @@ class GameState(StatesGroup):
 
 
 def mixin_generate():
-    n1 = random.randint(0, 9)
-    n2 = random.randint(1, 9)
+    n1 = random.randint(0, 16)
+    n2 = random.randint(0, 16)
 
     op = random.choice("+-*/")
 
@@ -70,8 +72,8 @@ def mixin_generate():
         answer = n1 * n2
         display_op = "x"
     else:
-        answer = random.randint(1, 9)
-        n2 = random.randint(1, 9)
+        answer = random.randint(1, 11)
+        n2 = random.randint(1, 11)
         n1 = answer * n2
         display_op = "÷"
 
@@ -79,20 +81,23 @@ def mixin_generate():
 
 
 def generate_question(mode="+"):
-    n1 = random.randint(0, 9)
-    n2 = random.randint(1, 9)
-
     op = mode
 
     if op == "+":
+        n1 = random.randint(1, 21)
+        n2 = random.randint(1, 21)
         answer = n1 + n2
         display_op = "+"
     elif op == "-":
-        if n1 < n2:
-            n1, n2 = n2, n1
+        n1 = random.randint(1, 21)
+        n2 = random.randint(1, 21)
+        # if n1 < n2:
+        #     n1, n2 = n2, n1
         answer = n1 - n2
         display_op = "-"
     elif op == "*":
+        n1 = random.randint(1, 13)
+        n2 = random.randint(1, 13)
         answer = n1 * n2
         display_op = "x"
     elif op == "/":
@@ -109,7 +114,7 @@ async def start_handler(pm: Message, state: FSMContext):
         await pm.answer("خوش برگشتی 👋", reply_markup=main_menu)
         return
 
-    await pm.answer("اسمت چیه؟ این اسم توی رتبه‌بندی نمایش داده میشه 👤")
+    await pm.answer("اسمت (فارسی) چیه؟ این اسم توی رتبه‌بندی نمایش داده میشه 👤")
     await state.set_state(GameState.waiting_for_nickname)
 
 
@@ -329,6 +334,38 @@ async def log_handler(pm: Message):
     )
 
 
+async def send_handler(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ فقط ادمین می‌تواند این پیام را ارسال کند")
+        return
+
+    text = message.text[len("/send") :].strip()
+    if not text:
+        await message.answer("❌ لطفا متن پیام را بعد از /send وارد کنید")
+        return
+
+    users = get_all_users()
+    count = 0
+    for user_id in users:
+        try:
+            await message.bot.send_message(chat_id=user_id, text=text)
+            count += 1
+        except:
+            pass
+
+    await message.answer(f"✅ پیام به {count} کاربر ارسال شد")
+
+
+async def reset_handler(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        await message.answer("❌ شما اجازه انجام این دستور را ندارید.")
+        return
+
+    reset_all_scores()
+
+    await message.answer("✅ تمام امتیازات کاربران ریست شد.")
+
+
 async def main():
     bot = Bot(API)
     dp = Dispatcher()
@@ -339,6 +376,8 @@ async def main():
     dp.message.register(leaderboard_handler, Command("leaderboard"))
     dp.message.register(help_handler, Command("help"))
     dp.message.register(log_handler, Command("log"))
+    dp.message.register(send_handler, Command("send"))
+    dp.message.register(reset_handler, Command("reset"))
 
     dp.message.register(newgame_handler, F.text == "🎮 شروع بازی")
     dp.message.register(profile_handler, F.text == "👤 پروفایل من")

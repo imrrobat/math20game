@@ -153,3 +153,37 @@ def add_game_played(user_id: int):
 
     conn.commit()
     conn.close()
+
+
+def get_all_users():
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("SELECT telegram_id FROM users")
+    rows = c.fetchall()
+
+    conn.close()
+
+    # تبدیل [(123,), (456,)] ➜ [123, 456]
+    return [row[0] for row in rows]
+
+
+def reset_all_scores():
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute(
+        """
+        UPDATE users
+        SET
+            score_add = 0,
+            score_sub = 0,
+            score_mul = 0,
+            score_div = 0,
+            score_mix = 0,
+            games_played = 0
+    """
+    )
+
+    conn.commit()
+    conn.close()
