@@ -131,6 +131,7 @@ def get_top_players(column: str, limit: int = 5):
         f"""
         SELECT nickname, {column}
         FROM users
+        WHERE {column} > 0
         ORDER BY {column} DESC
         LIMIT ?
         """,
