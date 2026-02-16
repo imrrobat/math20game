@@ -97,7 +97,10 @@ def generate_question(mode="+"):
         display_op = "-"
     elif op == "*":
         n1 = random.randint(1, 13)
-        n2 = random.randint(1, 13)
+        if n1 > 10:
+            n2 = random.randint(1, 10)
+        else:
+            n2 = random.randint(1, 13)
         answer = n1 * n2
         display_op = "x"
     elif op == "/":
