@@ -202,7 +202,7 @@ def reset_all_scores():
 #     return affected  # چند کاربر تغییر کرد
 
 
-def change_user_name(old_name, new_name):
+def change_user_nickname(old_name, new_name):
     conn = get_conn()
     c = conn.cursor()
 
