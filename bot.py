@@ -22,6 +22,7 @@ from db import (
     add_game_played,
     get_all_users,
     reset_all_scores,
+    change_user_nickname,
 )
 
 init_db()
@@ -369,6 +370,28 @@ async def reset_handler(message: Message):
     await message.answer("✅ تمام امتیازات کاربران ریست شد.")
 
 
+async def change_name_handler(pm: Message):
+    if pm.from_user.id != ADMIN_ID:
+        await pm.answer("❌ فقط ادمین می‌تواند این دستور را اجرا کند")
+        return
+
+    parts = pm.text.split(maxsplit=2)
+
+    if len(parts) < 3:
+        await pm.answer("❌ فرمت درست:\n/change_name old_name new_name")
+        return
+
+    old_name = parts[1]
+    new_name = parts[2]
+
+    updated = change_user_nickname(old_name, new_name)
+
+    if updated == 0:
+        await pm.answer("⚠️ کاربری با این اسم پیدا نشد")
+    else:
+        await pm.answer(f"✅ نام کاربر با موفقیت به «{new_name}» تغییر کرد")
+
+
 async def main():
     bot = Bot(API)
     dp = Dispatcher()
@@ -381,6 +404,7 @@ async def main():
     dp.message.register(log_handler, Command("log"))
     dp.message.register(send_handler, Command("send"))
     dp.message.register(reset_handler, Command("reset"))
+    dp.message.register(change_name_handler, Command("change_name"))
 
     dp.message.register(newgame_handler, F.text == "🎮 شروع بازی")
     dp.message.register(profile_handler, F.text == "👤 پروفایل من")

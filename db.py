@@ -186,3 +186,17 @@ def reset_all_scores():
 
     conn.commit()
     conn.close()
+
+
+def change_user_nickname(old_name: str, new_name: str):
+    conn = get_conn()
+    c = conn.cursor()
+
+    c.execute("UPDATE users SET nickname = ? WHERE nickname = ?", (new_name, old_name))
+
+    affected = c.rowcount
+
+    conn.commit()
+    conn.close()
+
+    return affected  # چند کاربر تغییر کرد
