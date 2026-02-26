@@ -12,6 +12,8 @@ from aiogram.filters import CommandStart, Command
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 
+from dotenv import load_dotenv
+
 from db import (
     # init_db,
     get_conn,
@@ -30,6 +32,8 @@ from game import mixin_generate, generate_question, generate_options
 from utils import HELP_MENU, main_menu, mode_keyboard, build_options_keyboard
 
 router = Router()
+load_dotenv()
+
 
 ADMIN_ID = int(os.getenv("ADMIN_ID"))
 
