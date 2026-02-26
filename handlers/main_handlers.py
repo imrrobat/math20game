@@ -385,6 +385,9 @@ async def mode_handler(pm: Message, state: FSMContext):
 
 @router.callback_query(GameState.playing, F.data.startswith("ans:"))
 async def answer_handler(callback: CallbackQuery, state: FSMContext):
+
+    await callback.answer()  # 👈 فوری جواب بده تا تلگرام لودینگ نمونه
+
     data = await state.get_data()
 
     mode = data.get("mode")
@@ -395,8 +398,19 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
     question_message_id = data.get("question_message_id")
     start_message_id = data.get("start_message_id")
 
-    user_answer = int(callback.data.split(":")[1])
+    # اگر به هر دلیلی state ناقص بود
+    if correct_answer is None:
+        await state.clear()
+        return
 
+    # گرفتن جواب کاربر
+    try:
+        user_answer = int(callback.data.split(":")[1])
+    except:
+        wrong += 1
+        user_answer = None
+
+    # بررسی جواب
     if user_answer == correct_answer:
         correct += 1
         result_emoji = "✅"
@@ -404,75 +418,91 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
         wrong += 1
         result_emoji = "❌"
 
-    # اگر بازی تموم شد
+    # =========================
+    # 🏁 پایان بازی
+    # =========================
     if q_num >= TOTAL_QUESTIONS:
-        total_time = round(time.time() - data.get("start_time", time.time()), 2)
-        score = (correct * 100) - (wrong * 200) - int(total_time * 2)
+        try:
+            total_time = round(time.time() - data.get("start_time", time.time()), 2)
+            score = (correct * 100) - (wrong * 200) - int(total_time * 2)
 
-        update_best_score(callback.from_user.id, mode, score)
-        add_game_played(callback.from_user.id)
+            update_best_score(callback.from_user.id, mode, score)
+            add_game_played(callback.from_user.id)
 
-        for msg_id in [question_message_id, start_message_id]:
-            try:
-                await callback.bot.delete_message(callback.message.chat.id, msg_id)
-            except:
-                pass
+            for msg_id in [question_message_id, start_message_id]:
+                if msg_id:
+                    try:
+                        await callback.bot.delete_message(
+                            callback.message.chat.id, msg_id
+                        )
+                    except:
+                        pass
 
-        mode_title_map = {
-            "+": "جمع",
-            "-": "تفریق",
-            "*": "ضرب",
-            "/": "تقسیم",
-            "mixin": "میکس",
-        }
+            mode_title_map = {
+                "+": "جمع",
+                "-": "تفریق",
+                "*": "ضرب",
+                "/": "تقسیم",
+                "mixin": "میکس",
+            }
 
-        mode_title = mode_title_map.get(mode, "نامشخص")
+            mode_title = mode_title_map.get(mode, "نامشخص")
 
-        await callback.message.answer(
-            f"🎯 نتیجه نهایی در {mode_title}\n"
-            f"تعداد درست‌ها: {correct}\n"
-            f"تعداد غلط‌ها: {wrong}\n"
-            f"زمان: {total_time} ثانیه\n"
-            "-------------------\n"
-            f"امتیاز شما: {score}",
-            reply_markup=main_menu,
-        )
+            await callback.message.answer(
+                f"🎯 نتیجه نهایی در {mode_title}\n"
+                f"تعداد درست‌ها: {correct}\n"
+                f"تعداد غلط‌ها: {wrong}\n"
+                f"زمان: {total_time} ثانیه\n"
+                "-------------------\n"
+                f"امتیاز شما: {score}",
+                reply_markup=main_menu,
+            )
 
-        await state.clear()
-        await callback.answer()
+        finally:
+            # 👈 مهم‌ترین بخش ضد هنگ
+            await state.clear()
+
         return
 
-    # سوال بعدی
-    if mode == "mixin":
-        q, ans = mixin_generate()
-    else:
-        q, ans = generate_question(mode)
-
-    options = generate_options(ans)
-    keyboard = build_options_keyboard(options)
-
-    await state.update_data(
-        question_number=q_num + 1,
-        correct=correct,
-        wrong=wrong,
-        current_answer=ans,
-    )
-
+    # =========================
+    # ❓ سوال بعدی
+    # =========================
     try:
-        await callback.bot.edit_message_text(
-            chat_id=callback.message.chat.id,
-            message_id=question_message_id,
-            text=f"{result_emoji}\n\n{q_num + 1}️. {q} = ?",
-            reply_markup=keyboard,
-        )
-    except:
-        new_msg = await callback.message.answer(
-            f"{q_num + 1}️ {q} = ?",
-            reply_markup=keyboard,
-        )
-        await state.update_data(question_message_id=new_msg.message_id)
+        if mode == "mixin":
+            q, ans = mixin_generate()
+        else:
+            q, ans = generate_question(mode)
 
-    await callback.answer()
+        options = generate_options(ans)
+        keyboard = build_options_keyboard(options)
+
+        await state.update_data(
+            question_number=q_num + 1,
+            correct=correct,
+            wrong=wrong,
+            current_answer=ans,
+        )
+
+        try:
+            await callback.bot.edit_message_text(
+                chat_id=callback.message.chat.id,
+                message_id=question_message_id,
+                text=f"{result_emoji}\n\n{q_num + 1}. {q} = ?",
+                reply_markup=keyboard,
+            )
+        except:
+            new_msg = await callback.message.answer(
+                f"{q_num + 1}. {q} = ?",
+                reply_markup=keyboard,
+            )
+            await state.update_data(question_message_id=new_msg.message_id)
+
+    except:
+        # اگر هر خطایی خورد → بازی ریست نشه و گیر نکنه
+        await state.clear()
+        await callback.message.answer(
+            "⚠️ بازی به دلیل خطا متوقف شد. دوباره /newgame بزن."
+        )
 
 
 @router.message(GameState.waiting_for_nickname)
