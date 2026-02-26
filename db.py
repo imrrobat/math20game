@@ -102,7 +102,6 @@ def update_best_score(user_id: int, mode: str, new_score: int):
     conn = sqlite3.connect(DB_NAME)
     cur = conn.cursor()
 
-    # گرفتن امتیاز فعلی
     cur.execute(f"SELECT {column} FROM users WHERE user_id = ?", (user_id,))
     row = cur.fetchone()
 
@@ -112,7 +111,6 @@ def update_best_score(user_id: int, mode: str, new_score: int):
 
     current_score = row[0] or 0
 
-    # اگر رکورد جدید بهتر بود → آپدیت
     if new_score > current_score:
         cur.execute(
             f"UPDATE users SET {column} = ? WHERE user_id = ?",
