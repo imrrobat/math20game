@@ -367,7 +367,7 @@ async def mode_handler(pm: Message, state: FSMContext):
     options = generate_options(ans)
     keyboard = build_options_keyboard(options)
 
-    question_msg = await pm.answer(f"1️⃣ {q} = ؟", reply_markup=keyboard)
+    question_msg = await pm.answer(f"1. {q} = ؟", reply_markup=keyboard)
 
     await state.update_data(
         mode=mode,
@@ -462,12 +462,12 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
         await callback.bot.edit_message_text(
             chat_id=callback.message.chat.id,
             message_id=question_message_id,
-            text=f"{result_emoji}\n\n{q_num + 1}️⃣ {q} = ؟",
+            text=f"{result_emoji}\n\n{q_num + 1}️ {q} = ?",
             reply_markup=keyboard,
         )
     except:
         new_msg = await callback.message.answer(
-            f"{q_num + 1}️⃣ {q} = ؟",
+            f"{q_num + 1}️ {q} = ?",
             reply_markup=keyboard,
         )
         await state.update_data(question_message_id=new_msg.message_id)

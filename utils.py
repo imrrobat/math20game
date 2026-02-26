@@ -35,11 +35,12 @@ mode_keyboard = ReplyKeyboardMarkup(
 )
 
 
-def build_options_keyboard(options):
-    keyboard = InlineKeyboardMarkup(
+def build_options_keyboard(options: list[int]):
+    return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text=str(opt), callback_data=f"ans:{opt}")]
-            for opt in options
+            [
+                InlineKeyboardButton(text=str(opt), callback_data=f"ans:{opt}")
+                for opt in options
+            ]
         ]
     )
-    return keyboard
