@@ -64,12 +64,12 @@ def generate_options(correct_answer: int):
 
     while len(options) < 4:
         offset = random.randint(-5, 5)
-        option = correct_answer + offset
+        if offset == 0:
+            continue
 
-        if option >= 0:  # اگر نمیخوای جواب منفی باشه
-            options.add(option)
+        option = correct_answer + offset
+        options.add(option)
 
     options = list(options)
     random.shuffle(options)
-
     return options
