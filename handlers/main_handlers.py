@@ -462,7 +462,7 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
         await callback.bot.edit_message_text(
             chat_id=callback.message.chat.id,
             message_id=question_message_id,
-            text=f"{result_emoji}\n\n{q_num + 1}️ {q} = ?",
+            text=f"{result_emoji}\n\n{q_num + 1}️. {q} = ?",
             reply_markup=keyboard,
         )
     except:
