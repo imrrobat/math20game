@@ -367,7 +367,7 @@ async def mode_handler(pm: Message, state: FSMContext):
     options = generate_options(ans)
     keyboard = build_options_keyboard(options)
 
-    question_msg = await pm.answer(f"1. {q} = ؟", reply_markup=keyboard)
+    question_msg = await pm.answer(f"1. {q} = ?", reply_markup=keyboard)
 
     await state.update_data(
         mode=mode,
