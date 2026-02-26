@@ -214,132 +214,15 @@ async def change_name_handler(pm: Message):
 
 
 #########################
-
-
-# @router.message(GameState.choosing_mode)
-# async def mode_handler(pm: Message, state: FSMContext):
-#     text = pm.text
-
-#     mode_map = {
-#         "➕ جمع": "+",
-#         "➖ تفریق": "-",
-#         "✖️ ضرب": "*",
-#         "➗ تقسیم": "/",
-#         "⚡ میکس": "mixin",
-#     }
-
-#     if text not in mode_map:
-#         await pm.answer(
-#             "لطفا یکی از گزینه‌ها رو انتخاب کن 👇", reply_markup=mode_keyboard
-#         )
-#         return
-
-#     mode = mode_map[text]
-
-#     start_msg = await pm.answer("بازی شروع شد 🧠", reply_markup=ReplyKeyboardRemove())
-
-#     if mode == "mixin":
-#         q, ans = mixin_generate()
-#     else:
-#         q, ans = generate_question(mode)
-
-#     question_msg = await pm.answer(f"1: {q} = ?")
-
-#     await state.update_data(
-#         mode=mode,
-#         question_number=1,
-#         correct=0,
-#         wrong=0,
-#         start_time=time.time(),
-#         current_answer=ans,
-#         question_message_id=question_msg.message_id,
-#     )
-
-#     await state.set_state(GameState.playing)
-
-
-# @router.message(GameState.playing)
-# async def answer_handler(pm: Message, state: FSMContext):
-#     data = await state.get_data()
-
-#     mode = data.get("mode")
-#     q_num = data.get("question_number", 1)
-#     correct = data.get("correct", 0)
-#     wrong = data.get("wrong", 0)
-#     correct_answer = data.get("current_answer")
-#     question_message_id = data.get("question_message_id")
-#     start_message_id = data.get("start_message_id")
-
-#     try:
-#         await pm.delete()
-#     except:
-#         pass
-
-#     try:
-#         user_answer = int(pm.text)
-#     except ValueError:
-#         wrong += 1
-#     else:
-#         if user_answer == correct_answer:
-#             correct += 1
-#         else:
-#             wrong += 1
-
-#     if q_num >= TOTAL_QUESTIONS:
-#         total_time = round(time.time() - data.get("start_time", time.time()), 2)
-#         score = (correct * 100) - (wrong * 200) - int(total_time * 2)
-
-#         update_best_score(pm.from_user.id, mode, score)
-#         add_game_played(pm.from_user.id)
-#         for msg_id in [question_message_id, start_message_id]:
-#             try:
-#                 await pm.bot.delete_message(pm.chat.id, msg_id)
-#             except:
-#                 pass
-#         mode_title_map = {
-#             "+": "جمع",
-#             "-": "تفریق",
-#             "*": "ضرب",
-#             "/": "تقسیم",
-#             "mixin": "میکس",
-#         }
-#         mode_title = mode_title_map.get(mode, "نامشخص")
-#         await pm.answer(
-#             f"🎯 نتیجه نهایی در {mode_title}\n"
-#             f"تعداد درست‌ها: {correct}\n"
-#             f"تعداد غلط‌ها: {wrong}\n"
-#             f"زمان: {total_time} ثانیه\n"
-#             "-------------------\n"
-#             f"امتیاز شما: {score}",
-#             reply_markup=main_menu,
-#         )
-
-#         await state.clear()
-#         return
-
-#     if mode == "mixin":
-#         q, ans = mixin_generate()
-#     else:
-#         q, ans = generate_question(mode)
-
-#     await state.update_data(
-#         question_number=q_num + 1, correct=correct, wrong=wrong, current_answer=ans
-#     )
-
-#     try:
-#         await pm.bot.edit_message_text(
-#             chat_id=pm.chat.id,
-#             message_id=question_message_id,
-#             text=f"{q_num + 1}: {q} = ?",
-#         )
-#     except:
-#         new_msg = await pm.answer(f"{q_num + 1}: {q} = ?")
-#         await state.update_data(question_message_id=new_msg.message_id)
+#########################
+#########################
+#########################
 
 
 @router.message(GameState.choosing_mode)
 async def mode_handler(pm: Message, state: FSMContext):
-    text = pm.text
+
+    text = pm.text or ""
 
     mode_map = {
         "➕ جمع": "+",
@@ -349,38 +232,61 @@ async def mode_handler(pm: Message, state: FSMContext):
         "⚡ میکس": "mixin",
     }
 
+    # اگر متن معتبر نبود
     if text not in mode_map:
         await pm.answer(
-            "لطفا یکی از گزینه‌ها رو انتخاب کن 👇", reply_markup=mode_keyboard
+            "لطفا یکی از گزینه‌ها رو انتخاب کن 👇",
+            reply_markup=mode_keyboard,
         )
         return
 
     mode = mode_map[text]
 
-    start_msg = await pm.answer("بازی شروع شد 🧠", reply_markup=ReplyKeyboardRemove())
+    try:
+        # پیام شروع
+        start_msg = await pm.answer(
+            "بازی شروع شد 🧠",
+            reply_markup=ReplyKeyboardRemove(),
+        )
 
-    if mode == "mixin":
-        q, ans = mixin_generate()
-    else:
-        q, ans = generate_question(mode)
+        # ساخت سوال
+        if mode == "mixin":
+            q, ans = mixin_generate()
+        else:
+            q, ans = generate_question(mode)
 
-    options = generate_options(ans)
-    keyboard = build_options_keyboard(options)
+        # ساخت گزینه‌ها
+        options = generate_options(ans)
+        keyboard = build_options_keyboard(options)
 
-    question_msg = await pm.answer(f"1. {q} = ?", reply_markup=keyboard)
+        # ارسال سوال
+        question_msg = await pm.answer(
+            f"1. {q} = ?",
+            reply_markup=keyboard,
+        )
 
-    await state.update_data(
-        mode=mode,
-        question_number=1,
-        correct=0,
-        wrong=0,
-        start_time=time.time(),
-        current_answer=ans,
-        question_message_id=question_msg.message_id,
-        start_message_id=start_msg.message_id,
-    )
+        # ذخیره state
+        await state.update_data(
+            mode=mode,
+            question_number=1,
+            correct=0,
+            wrong=0,
+            start_time=time.time(),
+            current_answer=ans,
+            question_message_id=question_msg.message_id,
+            start_message_id=start_msg.message_id,
+        )
 
-    await state.set_state(GameState.playing)
+        await state.set_state(GameState.playing)
+
+    except Exception as e:
+        # اگر هر خطایی رخ داد → بازی گیر نکنه
+        await state.clear()
+
+        await pm.answer(
+            "⚠️ شروع بازی با خطا مواجه شد.\n" "لطفا دوباره /newgame را بزن.",
+            reply_markup=main_menu,
+        )
 
 
 @router.callback_query(GameState.playing, F.data.startswith("ans:"))
