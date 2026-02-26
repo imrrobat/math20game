@@ -221,7 +221,6 @@ async def change_name_handler(pm: Message):
 
 @router.message(GameState.choosing_mode)
 async def mode_handler(pm: Message, state: FSMContext):
-
     text = pm.text or ""
 
     mode_map = {
@@ -232,38 +231,36 @@ async def mode_handler(pm: Message, state: FSMContext):
         "⚡ میکس": "mixin",
     }
 
-    # اگر متن معتبر نبود
     if text not in mode_map:
         await pm.answer(
-            "لطفا یکی از گزینه‌ها رو انتخاب کن 👇",
-            reply_markup=mode_keyboard,
+            "لطفا یکی از گزینه‌ها رو انتخاب کن 👇", reply_markup=mode_keyboard
         )
         return
 
     mode = mode_map[text]
 
     try:
-        # پیام شروع
         start_msg = await pm.answer(
-            "بازی شروع شد 🧠",
-            reply_markup=ReplyKeyboardRemove(),
+            "بازی شروع شد 🧠", reply_markup=ReplyKeyboardRemove()
         )
 
-        # ساخت سوال
+        # ساخت سوال اول
         if mode == "mixin":
             q, ans = mixin_generate()
         else:
             q, ans = generate_question(mode)
 
-        # ساخت گزینه‌ها
+        print("[DEBUG] QUESTION:", q, "ANSWER:", ans)  # لاگ دیباگ
+
+        # ساخت گزینه‌ها و کیبورد
         options = generate_options(ans)
+        print("[DEBUG] OPTIONS:", options)
         keyboard = build_options_keyboard(options)
+        print("[DEBUG] KEYBOARD BUILT")
 
         # ارسال سوال
-        question_msg = await pm.answer(
-            f"1. {q} = ?",
-            reply_markup=keyboard,
-        )
+        question_msg = await pm.answer(f"1. {q} = ?", reply_markup=keyboard)
+        print("[DEBUG] QUESTION SENT")
 
         # ذخیره state
         await state.update_data(
@@ -280,22 +277,19 @@ async def mode_handler(pm: Message, state: FSMContext):
         await state.set_state(GameState.playing)
 
     except Exception as e:
-        # اگر هر خطایی رخ داد → بازی گیر نکنه
         await state.clear()
-
+        print("[ERROR] MODE HANDLER:", e)
         await pm.answer(
-            "⚠️ شروع بازی با خطا مواجه شد.\n" "لطفا دوباره /newgame را بزن.",
+            "⚠️ شروع بازی با خطا مواجه شد.\nلطفا دوباره /newgame را بزن.",
             reply_markup=main_menu,
         )
 
 
 @router.callback_query(GameState.playing, F.data.startswith("ans:"))
 async def answer_handler(callback: CallbackQuery, state: FSMContext):
-
-    await callback.answer()  # 👈 فوری جواب بده تا تلگرام لودینگ نمونه
+    await callback.answer()  # جلوگیری از لودینگ تلگرام
 
     data = await state.get_data()
-
     mode = data.get("mode")
     q_num = data.get("question_number", 1)
     correct = data.get("correct", 0)
@@ -304,15 +298,18 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
     question_message_id = data.get("question_message_id")
     start_message_id = data.get("start_message_id")
 
-    # اگر به هر دلیلی state ناقص بود
     if correct_answer is None:
         await state.clear()
+        await callback.message.answer(
+            "⚠️ بازی در حالت نامعتبر است. دوباره /newgame بزن."
+        )
         return
 
     # گرفتن جواب کاربر
     try:
         user_answer = int(callback.data.split(":")[1])
-    except:
+    except Exception as e:
+        print("[ERROR] PARSING ANSWER:", e)
         wrong += 1
         user_answer = None
 
@@ -324,9 +321,7 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
         wrong += 1
         result_emoji = "❌"
 
-    # =========================
     # 🏁 پایان بازی
-    # =========================
     if q_num >= TOTAL_QUESTIONS:
         try:
             total_time = round(time.time() - data.get("start_time", time.time()), 2)
@@ -341,8 +336,8 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
                         await callback.bot.delete_message(
                             callback.message.chat.id, msg_id
                         )
-                    except:
-                        pass
+                    except Exception as e:
+                        print("[WARN] DELETE MESSAGE:", e)
 
             mode_title_map = {
                 "+": "جمع",
@@ -351,7 +346,6 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
                 "/": "تقسیم",
                 "mixin": "میکس",
             }
-
             mode_title = mode_title_map.get(mode, "نامشخص")
 
             await callback.message.answer(
@@ -365,14 +359,11 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
             )
 
         finally:
-            # 👈 مهم‌ترین بخش ضد هنگ
-            await state.clear()
+            await state.clear()  # ضد هنگ
 
         return
 
-    # =========================
     # ❓ سوال بعدی
-    # =========================
     try:
         if mode == "mixin":
             q, ans = mixin_generate()
@@ -396,15 +387,15 @@ async def answer_handler(callback: CallbackQuery, state: FSMContext):
                 text=f"{result_emoji}\n\n{q_num + 1}. {q} = ?",
                 reply_markup=keyboard,
             )
-        except:
+        except Exception as e:
+            print("[ERROR] EDIT MESSAGE:", e)
             new_msg = await callback.message.answer(
-                f"{q_num + 1}. {q} = ?",
-                reply_markup=keyboard,
+                f"{q_num + 1}. {q} = ?", reply_markup=keyboard
             )
             await state.update_data(question_message_id=new_msg.message_id)
 
-    except:
-        # اگر هر خطایی خورد → بازی ریست نشه و گیر نکنه
+    except Exception as e:
+        print("[ERROR] NEXT QUESTION:", e)
         await state.clear()
         await callback.message.answer(
             "⚠️ بازی به دلیل خطا متوقف شد. دوباره /newgame بزن."
